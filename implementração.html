@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cálculo Metragem de Viagens</title>
+    <link rel="icon" href="imagens/fivecoin.png" type="image/x-icon"> <!-- Favicon -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+        .logo {
+            display: block;
+            margin: 0 auto 30px;
+            max-width: 200px; /* Adjust as needed */
+        }
+        .form-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: 20px; /* Space between columns */
+        }
+        .form-group {
+            flex: 1 1 calc(50% - 20px); /* Two columns layout */
+            min-width: 300px; /* Minimum width for responsiveness */
+        }
+        .trip-details {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px; /* Space between inputs in trip details */
+            margin-top: 20px; /* Space above trip details */
+        }
+        .trip-input {
+            flex: 1; /* Flex to evenly distribute space */
+        }
+        label {
+            font-weight: bold;
+            display: block;
+            margin-top: 10px;
+        }
+        input, select, button {
+            margin-top: 5px;
+            padding: 12px;
+            width: 100%;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        input:focus, select:focus {
+            border-color: #3498db;
+            box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
+            outline: none;
+        }
+        input:invalid {
+            border-color: red;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-top: 15px;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        #resultado {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #ffffff;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            display: none;
+        }
+        h2 {
+            color: #2c3e50;
+            margin-top: 0;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+            margin-top: 15px;
+        }
+        li {
+            margin-bottom: 10px;
+            background: #f4f4f4;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        @media (max-width: 600px) {
+            .form-group {
+                flex: 1 1 100%; /* Stack in one column on smaller screens */
+            }
+            .trip-details {
+                flex-direction: column; /* Stack inputs on smaller screens */
+            }
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+
+    <img src="imagens/logoSoftware.png" alt="Logo" class="logo"> <!-- Logo -->
+
+    <h1>Cálculo de Custo de Viagens</h1>
+
+    <div class="form-container">
+        <div class="form-group">
+            <label for="motorista">Selecione o motorista:</label>
+            <select id="motorista">
+                <option value="">Selecione</option>
+                <option value="João">João</option>
+                <option value="Maria">Maria</option>
+                <option value="Carlos">Carlos</option>
+                <option value="Ana">Ana</option>
+                <option value="Lucas">Lucas</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="numeroViagens">Quantas viagens o motorista fez?</label>
+            <input type="number" id="numeroViagens" min="1" required>
+        </div>
+
+        <div class="form-group">
+            <label for="valorMadeira">Informe o valor da madeira por metro:</label>
+            <input type="number" id="valorMadeira" step="0.01" placeholder="Digite o valor da madeira" required>
+        </div>
+
+        <div class="form-group">
+            <label for="gastoCombustivel">Quanto foi gasto com combustível?</label>
+            <input type="number" id="gastoCombustivel" step="0.01" placeholder="Digite o gasto com combustível" required>
+        </div>
+    </div>
+
+    <div id="metragemInputs"></div>
+
+    <button onclick="calcular()">Calcular</button>
+    <button id="gerarPDF" style="display:none;">Gerar PDF</button>
+
+    <div id="resultado"></div>
+
+    <script>
+        const numeroViagensInput = document.getElementById('numeroViagens');
+        const metragemInputs = document.getElementById('metragemInputs');
+        const motoristaSelect = document.getElementById('motorista');
+
+        numeroViagensInput.addEventListener('input', () => {
+            const numeroViagens = parseInt(numeroViagensInput.value);
+            metragemInputs.innerHTML = '';
+
+            for (let i = 1; i <= numeroViagens; i++) {
+                const tripDetailsContainer = document.createElement('div');
+                tripDetailsContainer.classList.add('trip-details');
+
+                const labelMetragem = document.createElement('label');
+                labelMetragem.textContent = `Metragem da viagem ${i}:`;
+                const inputMetragem = document.createElement('input');
+                inputMetragem.type = 'number';
+                inputMetragem.id = `metragem${i}`;
+                inputMetragem.step = '0.01';
+                inputMetragem.classList.add('trip-input');
+                inputMetragem.addEventListener('input', atualizarSomaMetragem);
+
+                const labelData = document.createElement('label');
+                labelData.textContent = `Data da viagem ${i}:`;
+                const inputData = document.createElement('input');
+                inputData.type = 'date';
+                inputData.id = `data${i}`;
+                inputData.classList.add('trip-input');
+
+                const labelCupom = document.createElement('label');
+                labelCupom.textContent = `Número do cupom ${i}:`;
+                const inputCupom = document.createElement('input');
+                inputCupom.type = 'text';
+                inputCupom.id = `cupom${i}`;
+                inputCupom.classList.add('trip-input');
+
+                tripDetailsContainer.appendChild(labelMetragem);
+                tripDetailsContainer.appendChild(inputMetragem);
+                tripDetailsContainer.appendChild(labelData);
+                tripDetailsContainer.appendChild(inputData);
+                tripDetailsContainer.appendChild(labelCupom);
+                tripDetailsContainer.appendChild(inputCupom);
+
+                metragemInputs.appendChild(tripDetailsContainer);
+            }
+        });
+
+        function atualizarSomaMetragem() {
+            const numeroViagens = parseInt(numeroViagensInput.value);
+            let somaMetragem = 0;
+
+            for (let i = 1; i <= numeroViagens; i++) {
+                const metragem = parseFloat(document.getElementById(`metragem${i}`).value) || 0;
+                somaMetragem += metragem;
+            }
+
+            document.getElementById('somaMetragem').textContent = `Soma da metragem: ${somaMetragem.toFixed(2)} metros`;
+        }
+
+        function formatarValor(valor) {
+            return valor.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        }
+
+        function calcular() {
+            if (!motoristaSelect.value || !numeroViagensInput.value || !document.getElementById('valorMadeira').value || !document.getElementById('gastoCombustivel').value) {
+                alert("Por favor, preencha todos os campos.");
+                return;
+            }
+
+            const nomeMotorista = motoristaSelect.value;
+            const numeroViagens = parseInt(numeroViagensInput.value);
+            let somaMetragem = 0;
+            let datasViagens = [];
+            let cuponsViagens = [];
+
+            for (let i = 1; i <= numeroViagens; i++) {
+                const metragem = parseFloat(document.getElementById(`metragem${i}`).value) || 0;
+                somaMetragem += metragem;
+                const data = document.getElementById(`data${i}`).value;
+                datasViagens.push(data);
+                const cupom = document.getElementById(`cupom${i}`).value;
+                cuponsViagens.push(cupom);
+            }
+
+            const valorMadeira = parseFloat(document.getElementById('valorMadeira').value) || 0;
+            const gastoCombustivel = parseFloat(document.getElementById('gastoCombustivel').value) || 0;
+
+            const custoTotal = somaMetragem * valorMadeira;
+            const valorLiquido = custoTotal - gastoCombustivel; // Valor líquido
+            const imposto = valorLiquido * 0.06; // 6% do valor líquido
+            const valorAPagar = valorLiquido - imposto; // Valor a pagar
+
+            // Cálculo da média ponderada da metragem
+            const mediaPonderadaMetragem = somaMetragem / numeroViagens;
+
+            const resultado = `
+                <h2>Resultados</h2>
+                <p>Nome do Motorista: ${nomeMotorista}</p>
+                <p>Total de viagens: ${numeroViagens}</p>
+                <p>Soma da metragem: ${somaMetragem.toFixed(2)} metros</p>
+                <p>Média ponderada da metragem: ${mediaPonderadaMetragem.toFixed(2)} metros</p>
+                <p>Custo total bruto: R$ ${formatarValor(custoTotal)}</p>
+                <p>Gasto com combustível: R$ ${formatarValor(gastoCombustivel)}</p>
+                <p><strong>Valor líquido: R$ ${formatarValor(valorLiquido)}</strong></p>
+                <p><strong>Imposto (6% do valor líquido): R$ ${formatarValor(imposto)}</strong></p>
+                <p><strong>Valor a pagar: R$ ${formatarValor(valorAPagar)}</strong></p>
+                <h3>Detalhes das Viagens</h3>
+                <ul>
+                    ${datasViagens.map((data, index) => `<li>Viagem ${index + 1}: Data: ${data}, Cupom: ${cuponsViagens[index]}</li>`).join('')}
+                </ul>
+            `;
+            document.getElementById('resultado').innerHTML = resultado;
+            document.getElementById('resultado').style.display = 'block'; // Mostrar o resultado
+            document.getElementById('gerarPDF').style.display = 'block'; // Mostrar o botão de PDF
+        }
+
+        document.getElementById('gerarPDF').addEventListener('click', () => {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            const resultadoTexto = document.getElementById('resultado').innerText;
+
+            // Define o tamanho da fonte
+            doc.setFontSize(12); // Ajuste o número para aumentar ou diminuir o tamanho da fonte
+
+            // Adiciona o texto ao PDF
+            doc.text(resultadoTexto, 10, 10);
+            
+
+            // Salva o PDF
+            doc.save('resultado_viagens.pdf');
+        });
+    </script>
+
+</body>
+</html>
